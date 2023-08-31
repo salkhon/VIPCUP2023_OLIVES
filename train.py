@@ -78,7 +78,7 @@ def submission_generate(val_loader, model, opt):
             output = model(images)
             output = torch.round(torch.sigmoid(output))
             output = output.squeeze().detach().cpu().numpy()
-            
+
             # add save data
             save_data["File_Name"].append(imgpath)
             for i in range(6):
@@ -127,10 +127,11 @@ def main():
 
     # training routine
     for epoch in range(1, opt.epochs + 1):
-        train_supervised(train_loader, model, criterion, optimizer, epoch, opt)
+        avg_loss = train_supervised(train_loader, model, criterion, optimizer, epoch, opt)
+        print("loss:", avg_loss)
 
     submission_generate(test_loader, model, opt)
-    sample_evaluation(train_loader, model, opt)
+    # sample_evaluation(train_loader, model, opt)
 
     save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(model, optimizer, opt, opt.epochs, save_file)
