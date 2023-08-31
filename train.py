@@ -77,10 +77,10 @@ def submission_generate(val_loader, model, opt):
             # forward
             output = model(images)
             output = torch.round(torch.sigmoid(output))
-            output = output.squeeze().detach().cpu().numpy()
+            output = output.int().squeeze().detach().cpu().numpy()
 
             # add save data
-            save_data["File_Name"].append(imgpath)
+            save_data["File_Name"].extend(imgpath)
             for i in range(6):
                 save_data[f"B{i+1}"].append(output[i])
 
