@@ -1,5 +1,5 @@
 import torch
-from utils import AverageMeter,save_model
+from utils import AverageMeter, save_model
 import sys
 import time
 import numpy as np
@@ -7,12 +7,12 @@ from sklearn.metrics import f1_score
 from config import parse_option
 import os
 from utils import set_loader, set_model, set_optimizer, adjust_learning_rate
+import pandas as pd
 
 
-def train_supervised(train_loader, model,criterion, optimizer, epoch, opt):
+def train_supervised(train_loader, model, criterion, optimizer, epoch, opt):
     """one epoch training"""
     model.train()
-
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -32,7 +32,6 @@ def train_supervised(train_loader, model,criterion, optimizer, epoch, opt):
 
         # compute loss
 
-
         output = model(images)
         loss = criterion(output, labels)
 
@@ -50,32 +49,41 @@ def train_supervised(train_loader, model,criterion, optimizer, epoch, opt):
 
         # print info
         if (idx + 1) % opt.print_freq == 0:
-            print('Train: [{0}][{1}/{2}]\t'.format(
-                epoch, idx + 1, len(train_loader)))
+            print("Train: [{0}][{1}/{2}]\t".format(epoch, idx + 1, len(train_loader)))
 
             sys.stdout.flush()
 
     return losses.avg
+
 
 def submission_generate(val_loader, model, opt):
     """validation"""
     model.eval()
 
     device = opt.device
-    out_list = []
+    save_data = {
+        "File_Name": [],
+        "B1": [],
+        "B2": [],
+        "B3": [],
+        "B4": [],
+        "B5": [],
+        "B6": [],
+    }
     with torch.no_grad():
-        for idx, (image,bio_tensor) in (enumerate(val_loader)):
-
+        for idx, (imgpath, image, bio_tensor) in enumerate(val_loader):
             images = image.float().to(device)
 
             # forward
             output = model(images)
             output = torch.round(torch.sigmoid(output))
-            out_list.append(output.squeeze().detach().cpu().numpy())
 
+            # add save data
+            save_data["File_Name"].append(imgpath)
+            for i in range(6):
+                save_data[f"B{i+1}"].append(output[i])
 
-    out_submisison = np.array(out_list)
-    np.save('output',out_submisison)
+    pd.DataFrame(save_data).to_csv("out.csv", index=False)
 
 
 def sample_evaluation(val_loader, model, opt):
@@ -86,8 +94,7 @@ def sample_evaluation(val_loader, model, opt):
     out_list = []
     label_list = []
     with torch.no_grad():
-        for idx, (image,bio_tensor) in (enumerate(val_loader)):
-
+        for idx, (image, bio_tensor) in enumerate(val_loader):
             images = image.float().to(device)
             labels = bio_tensor.float()
 
@@ -101,7 +108,7 @@ def sample_evaluation(val_loader, model, opt):
 
     label_array = np.array(label_list)
     out_array = np.array(out_list)
-    f = f1_score(label_array,out_array,average='macro')
+    f = f1_score(label_array, out_array, average="macro")
     print(f)
 
 
@@ -109,7 +116,7 @@ def main():
     opt = parse_option()
 
     # build data loader
-    train_loader,test_loader = set_loader(opt)
+    train_loader, test_loader = set_loader(opt)
 
     # build model and criterion
     model, criterion = set_model(opt)
@@ -117,18 +124,16 @@ def main():
     # build optimizer
     optimizer = set_optimizer(opt, model)
 
-
     # training routine
     for epoch in range(1, opt.epochs + 1):
         train_supervised(train_loader, model, criterion, optimizer, epoch, opt)
 
     submission_generate(test_loader, model, opt)
-    sample_evaluation(test_loader, model, opt)
+    sample_evaluation(train_loader, model, opt)
 
-    save_file = os.path.join(
-        opt.save_folder, 'last.pth')
+    save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
