@@ -18,7 +18,7 @@ class OLIVES(data.Dataset):
     def __getitem__(self, idx):
         rel_path = (
             f"/TREX_DME{self.df.iloc[idx, 0]}"
-            if self.df.iloc[idx, 0].str.startswith("/TREX DME")
+            if self.df.iloc[idx, 0].startswith("/TREX DME")
             else self.df.iloc[idx, 0]
         )
         path = self.img_dir + rel_path
